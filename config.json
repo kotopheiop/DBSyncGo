@@ -1,0 +1,21 @@
+{
+  "tables": ["table1", "table2", "table3"],
+  "ssh_user": "your_ssh_username",
+  "remote_server": "remote_server_address",
+  "ssh_key_path": "path_to_your_ssh_key",
+  "max_routines": 5,
+  "local_db": {
+    "name": "local_database_name",
+    "user": "local_database_user",
+    "password": "local_database_password",
+    "address": "local_database_address",
+    "port": "local_database_port"
+  },
+  "remote_db": {
+    "name": "remote_database_name",
+    "user": "remote_database_user",
+    "password": "remote_database_password",
+    "address": "remote_database_address",
+    "port": "remote_database_port"
+  }
+}
