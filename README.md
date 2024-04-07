@@ -24,7 +24,7 @@ DBSyncGo - это инструмент, написанный на Go, котор
 {
   "tables": ["table1", "table2", "table3"], // Список таблиц, которые нужно синхронизировать
   "ssh_user": "your_ssh_username", // Имя пользователя для SSH-соединения
-  "remote_server": "remote_server_address", // Адрес удаленного сервера
+  "remote_server": "remote_server_address:port", // Адрес и порт удаленного сервера
   "ssh_key_path": "path_to_your_ssh_key", // Путь до файла с ключом для SSH-соединения
   "max_routines": 5, // Максимальное количество одновременно работающих горутин
   "local_db": {
@@ -42,5 +42,4 @@ DBSyncGo - это инструмент, написанный на Go, котор
     "port": "remote_database_port" // Порт сервера удаленной базы данных
   }
 }
-
 ```

@@ -1,17 +1,19 @@
 package main
 
 import (
-	"DBSyncGo/config"
-	"DBSyncGo/database"
+	"log"
 	"sync"
 	"time"
+
+	"DBSyncGo/config"
+	"DBSyncGo/database"
 )
 
 func main() {
 	cfg := config.LoadConfig("config.json")
 
-	database.CheckDatabaseConnection(cfg.LocalDB, cfg.SSHKeyPath, false)
-	database.CheckDatabaseConnection(cfg.RemoteDB, cfg.SSHKeyPath, true)
+	database.CheckLocalDatabaseConnection(cfg.LocalDB)
+	database.CheckRemoteDatabaseConnection(cfg)
 
 	var wg sync.WaitGroup
 	sem := make(chan bool, cfg.MaxRoutines)
@@ -25,7 +27,10 @@ func main() {
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			database.DumpAndLoadTable(cfg, table, timeFormat)
+			err := database.DumpAndLoadTable(cfg, table, timeFormat)
+			if err != nil {
+				log.Println(err)
+			}
 		}(table)
 	}
 

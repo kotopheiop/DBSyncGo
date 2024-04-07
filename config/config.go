@@ -46,7 +46,18 @@ func LoadConfig(filename string) Config {
 }
 
 func checkConfigParameters(cfg Config) {
-	if len(cfg.Tables) == 0 || cfg.SSHUser == "" || cfg.RemoteServer == "" || cfg.SSHKeyPath == "" || cfg.LocalDB.Name == "" || cfg.LocalDB.User == "" || cfg.LocalDB.Password == "" || cfg.LocalDB.Address == "" || cfg.RemoteDB.Name == "" || cfg.RemoteDB.User == "" || cfg.RemoteDB.Password == "" || cfg.RemoteDB.Address == "" {
+	if len(cfg.Tables) == 0 ||
+		cfg.SSHUser == "" ||
+		cfg.RemoteServer == "" ||
+		cfg.SSHKeyPath == "" ||
+		cfg.LocalDB.Name == "" ||
+		cfg.LocalDB.User == "" ||
+		cfg.LocalDB.Password == "" ||
+		cfg.LocalDB.Address == "" ||
+		cfg.RemoteDB.Name == "" ||
+		cfg.RemoteDB.User == "" ||
+		cfg.RemoteDB.Password == "" ||
+		cfg.RemoteDB.Address == "" {
 		log.Fatal("Все параметры в файле конфигурации должны быть заполнены")
 	}
 }
