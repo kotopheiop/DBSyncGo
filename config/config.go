@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"strings"
 )
 
 type Database struct {
@@ -46,18 +47,46 @@ func LoadConfig(filename string) Config {
 }
 
 func checkConfigParameters(cfg Config) {
-	if len(cfg.Tables) == 0 ||
-		cfg.SSHUser == "" ||
-		cfg.RemoteServer == "" ||
-		cfg.SSHKeyPath == "" ||
-		cfg.LocalDB.Name == "" ||
-		cfg.LocalDB.User == "" ||
-		cfg.LocalDB.Password == "" ||
-		cfg.LocalDB.Address == "" ||
-		cfg.RemoteDB.Name == "" ||
-		cfg.RemoteDB.User == "" ||
-		cfg.RemoteDB.Password == "" ||
-		cfg.RemoteDB.Address == "" {
-		log.Fatal("Все параметры в файле конфигурации должны быть заполнены")
+	missingParams := []string{}
+
+	if len(cfg.Tables) == 0 {
+		missingParams = append(missingParams, "Tables")
+	}
+	if cfg.SSHUser == "" {
+		missingParams = append(missingParams, "SSHUser")
+	}
+	if cfg.RemoteServer == "" {
+		missingParams = append(missingParams, "RemoteServer")
+	}
+	if cfg.SSHKeyPath == "" {
+		missingParams = append(missingParams, "SSHKeyPath")
+	}
+	if cfg.LocalDB.Name == "" {
+		missingParams = append(missingParams, "LocalDB.Name")
+	}
+	if cfg.LocalDB.User == "" {
+		missingParams = append(missingParams, "LocalDB.User")
+	}
+	//if cfg.LocalDB.Password == "" {
+	//	missingParams = append(missingParams, "LocalDB.Password")
+	//}
+	if cfg.LocalDB.Address == "" {
+		missingParams = append(missingParams, "LocalDB.Address")
+	}
+	if cfg.RemoteDB.Name == "" {
+		missingParams = append(missingParams, "RemoteDB.Name")
+	}
+	if cfg.RemoteDB.User == "" {
+		missingParams = append(missingParams, "RemoteDB.User")
+	}
+	if cfg.RemoteDB.Password == "" {
+		missingParams = append(missingParams, "RemoteDB.Password")
+	}
+	if cfg.RemoteDB.Address == "" {
+		missingParams = append(missingParams, "RemoteDB.Address")
+	}
+
+	if len(missingParams) > 0 {
+		log.Fatal("Все параметры в файле конфигурации должны быть заполнены. Незаполненные параметры: ", strings.Join(missingParams, ", "))
 	}
 }
