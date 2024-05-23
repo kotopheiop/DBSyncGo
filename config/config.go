@@ -23,6 +23,7 @@ type Config struct {
 	RemoteDB     Database `json:"remote_db"`     // информация о подключении к удаленной базе данных
 	SSHKeyPath   string   `json:"ssh_key_path"`  // путь до ключа для SSH-соединения
 	MaxRoutines  int      `json:"max_routines"`  // максимальное количество горутин
+	CompressDump bool     `json:"compress_dump"` // необходимо ли сжимать данные true\false
 }
 
 func LoadConfig(filename string) Config {
@@ -67,9 +68,9 @@ func checkConfigParameters(cfg Config) {
 	if cfg.LocalDB.User == "" {
 		missingParams = append(missingParams, "LocalDB.User")
 	}
-	//if cfg.LocalDB.Password == "" {
-	//	missingParams = append(missingParams, "LocalDB.Password")
-	//}
+	if cfg.LocalDB.Password == "" {
+		missingParams = append(missingParams, "LocalDB.Password")
+	}
 	if cfg.LocalDB.Address == "" {
 		missingParams = append(missingParams, "LocalDB.Address")
 	}

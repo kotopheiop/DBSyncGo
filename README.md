@@ -27,6 +27,7 @@ DBSyncGo - это инструмент, написанный на Go, котор
   "remote_server": "remote_server_address:port", // Адрес и порт удаленного сервера
   "ssh_key_path": "path_to_your_ssh_key", // Путь до файла с ключом для SSH-соединения
   "max_routines": 5, // Максимальное количество одновременно работающих горутин
+  "compress_dump": 5, // необходимо ли сжимать данные true\false
   "local_db": {
     "name": "local_database_name", // Имя локальной базы данных
     "user": "local_database_user", // Имя пользователя для подключения к локальной базе данных
