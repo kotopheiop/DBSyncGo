@@ -24,6 +24,7 @@ type Config struct {
 	SSHKeyPath   string   `json:"ssh_key_path"`  // путь до ключа для SSH-соединения
 	MaxRoutines  int      `json:"max_routines"`  // максимальное количество горутин
 	CompressDump bool     `json:"compress_dump"` // необходимо ли сжимать данные true\false
+	Debug        bool     `json:"debug"`         // вывод информации о запускаемых командах true\false
 }
 
 func LoadConfig(filename string) Config {

@@ -9,26 +9,44 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/jfcote87/sshdb/mysql"
 	"golang.org/x/crypto/ssh"
 )
 
-func CheckLocalDatabaseConnection(cfg config.Database) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", cfg.User, cfg.Password, cfg.Address, cfg.Port, cfg.Name)
+func CheckLocalDatabaseConnection(cfg config.Config) {
+	user := url.QueryEscape(cfg.LocalDB.User)
+	address := url.QueryEscape(cfg.LocalDB.Address)
+	port := url.QueryEscape(cfg.LocalDB.Port)
+	dbName := url.QueryEscape(cfg.LocalDB.Name)
+
+	// Создание строки подключения
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, cfg.LocalDB.Password, address, port, dbName)
+
+	if cfg.Debug {
+		log.Printf("ℹ️ Строка подключения: %s\n", dsn)
+	}
+
 	dbLocalConnection, err := sql.Open("mysql", dsn)
 	if err != nil {
-		log.Fatalf("⛔ Не удалось подключиться к базе данных: %v", err)
+		log.Fatalf("⛔ Не удалось подключиться к локальной базе данных: %v", err)
 	}
-	defer dbLocalConnection.Close()
+	defer func(dbLocalConnection *sql.DB) {
+		err := dbLocalConnection.Close()
+		if err != nil {
+
+		}
+	}(dbLocalConnection)
 
 	err = dbLocalConnection.Ping()
 	if err != nil {
-		log.Fatalf("⛔ Не удалось подключиться к базе данных: %v", err)
+		log.Fatalf("⛔ Не удалось подключиться к локальной базе данных: %v", err)
 	} else {
-		log.Println("✅ Подключение к локальной базе данных установлено")
+		log.Println("✅ Соединение с локальной базой данных установлено")
 	}
 }
 
@@ -49,7 +67,12 @@ func CheckRemoteDatabaseConnection(cfg config.Config) {
 	}
 
 	dbRemoteConnection := sql.OpenDB(connector)
-	defer dbRemoteConnection.Close()
+	defer func(dbRemoteConnection *sql.DB) {
+		err := dbRemoteConnection.Close()
+		if err != nil {
+
+		}
+	}(dbRemoteConnection)
 
 	err = dbRemoteConnection.Ping()
 	if err != nil {
@@ -63,7 +86,7 @@ func CheckRemoteDatabaseConnection(cfg config.Config) {
 			log.Fatalf("⛔ Неизвестная ошибка при подключении к базе данных: %v", err)
 		}
 	} else {
-		log.Println("✅ Удалось подключиться к удаленной базе данных")
+		log.Println("✅ Соединение с удалённой базой данных установлено")
 	}
 }
 
@@ -71,6 +94,11 @@ func DumpAndLoadTable(cfg config.Config, table string, session *ssh.Session) err
 	log.Printf("⏳ Начинаю дамп таблицы %s\n", table)
 
 	dumpOut, err := dumpTable(cfg, table)
+	if err != nil {
+		return err
+	}
+
+	dumpOut, err = replaceCreateTable(dumpOut)
 	if err != nil {
 		return err
 	}
@@ -86,22 +114,29 @@ func DumpAndLoadTable(cfg config.Config, table string, session *ssh.Session) err
 		dataToSend = dumpOut
 		log.Printf("✅ Завершил дамп таблицы %s без сжатия (размер: %s), начинаю загрузку на удаленный сервер\n", table, formatSize(len(dataToSend)))
 	}
-
+	startTimeLoadToRemote := time.Now()
 	err = loadToRemote(cfg, dataToSend, session, cfg.CompressDump)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("✅ Завершил загрузку таблицы %s на удаленный сервер\n", table)
+	log.Printf("✅ Завершил загрузку таблицы %s на удаленный сервер (%s)\n", table, time.Since(startTimeLoadToRemote))
 	return nil
 }
 
 func dumpTable(cfg config.Config, table string) ([]byte, error) {
-	dumpCmd := exec.Command("mysqldump",
-		"--skip-lock-tables", "--set-gtid-purged=OFF", "--no-tablespaces",
-		"-u", cfg.LocalDB.User, "-p"+cfg.LocalDB.Password,
+	dumpCmd := exec.Command(
+		"mysqldump",
+		"--replace", // или "--insert-ignore"
+		"--skip-lock-tables",
+		"--set-gtid-purged=OFF",
+		"--no-tablespaces",
+		"--compact",
+		"-u", cfg.LocalDB.User,
+		"-p"+cfg.LocalDB.Password,
 		"-h", cfg.LocalDB.Address,
-		cfg.LocalDB.Name, table,
+		cfg.LocalDB.Name,
+		table,
 	)
 	dumpCmd.Env = append(os.Environ(), "MYSQL_PWD="+cfg.LocalDB.Password)
 	return dumpCmd.Output()
@@ -122,16 +157,55 @@ func compressData(data []byte) ([]byte, error) {
 }
 
 func loadToRemote(cfg config.Config, data []byte, session *ssh.Session, isCompressed bool) error {
-	session.Stdin = bytes.NewReader(data)
-	session.Setenv("MYSQL_PWD", cfg.RemoteDB.Password)
+	var err error
 
-	var runCmd string
+	clearAndLoadCmd := fmt.Sprintf(
+		"mysql -u %s %s",
+		cfg.RemoteDB.User, cfg.RemoteDB.Name,
+	)
+
 	if isCompressed {
-		runCmd = "gzip -d | mysql -u " + cfg.RemoteDB.User + " -p" + cfg.RemoteDB.Password + " " + cfg.RemoteDB.Name
-	} else {
-		runCmd = "mysql -u " + cfg.RemoteDB.User + " -p" + cfg.RemoteDB.Password + " " + cfg.RemoteDB.Name
+		clearAndLoadCmd = fmt.Sprintf(
+			"gzip -d | mysql -u %s %s",
+			cfg.RemoteDB.User, cfg.RemoteDB.Name,
+		)
 	}
-	return session.Run(runCmd)
+	if cfg.Debug {
+		log.Println("ℹ️ Запущена команда:", clearAndLoadCmd)
+	}
+
+	session.Stdin = bytes.NewReader(data)
+
+	// Захват вывода ошибок
+	var stdoutBuf, stderrBuf bytes.Buffer
+	session.Stdout = &stdoutBuf
+	session.Stderr = &stderrBuf
+
+	err = session.Run(clearAndLoadCmd)
+	if err != nil {
+		log.Printf("⛔ Произошла ошибка: %v", err)
+		log.Printf("⛔ Stdout: %s", stdoutBuf.String())
+		log.Printf("⛔ Stderr: %s", stderrBuf.String())
+		return err
+	}
+
+	if cfg.Debug && stdoutBuf.String() != "" {
+		log.Println("ℹ️ Вывод команды:", stdoutBuf.String())
+	}
+	return nil
+}
+
+// Заменим все CREATE TABLE на CREATE TABLE IF NOT EXISTS, т.к. mysqldump так не умеет ╰（‵□′）╯
+func replaceCreateTable(dump []byte) ([]byte, error) {
+	cmd := exec.Command("sed", "s/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g")
+	cmd.Stdin = bytes.NewReader(dump)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }
 
 func formatSize(size int) string {

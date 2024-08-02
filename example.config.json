@@ -5,6 +5,7 @@
   "ssh_key_path": "path_to_your_ssh_key",
   "max_routines": 5,
   "compress_dump": true,
+  "debug": false,
   "local_db": {
     "name": "local_database_name",
     "user": "local_database_user",

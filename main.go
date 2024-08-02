@@ -14,7 +14,7 @@ func main() {
 	start := time.Now()
 	cfg := config.LoadConfig("config.json")
 
-	database.CheckLocalDatabaseConnection(cfg.LocalDB)
+	database.CheckLocalDatabaseConnection(cfg)
 	database.CheckRemoteDatabaseConnection(cfg)
 
 	// Создаем SSH клиент и туннель один раз
