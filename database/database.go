@@ -98,11 +98,6 @@ func DumpAndLoadTable(cfg config.Config, table string, session *ssh.Session) err
 		return err
 	}
 
-	dumpOut, err = replaceCreateTable(dumpOut)
-	if err != nil {
-		return err
-	}
-
 	var dataToSend []byte
 	if cfg.CompressDump {
 		dataToSend, err = compressData(dumpOut)
@@ -127,10 +122,10 @@ func DumpAndLoadTable(cfg config.Config, table string, session *ssh.Session) err
 func dumpTable(cfg config.Config, table string) ([]byte, error) {
 	dumpCmd := exec.Command(
 		"mysqldump",
-		"--replace", // или "--insert-ignore"
 		"--skip-lock-tables",
 		"--set-gtid-purged=OFF",
 		"--no-tablespaces",
+		"--add-drop-table",
 		"--compact",
 		"-u", cfg.LocalDB.User,
 		"-p"+cfg.LocalDB.Password,
@@ -193,19 +188,6 @@ func loadToRemote(cfg config.Config, data []byte, session *ssh.Session, isCompre
 		log.Println("ℹ️ Вывод команды:", stdoutBuf.String())
 	}
 	return nil
-}
-
-// Заменим все CREATE TABLE на CREATE TABLE IF NOT EXISTS, т.к. mysqldump так не умеет ╰（‵□′）╯
-func replaceCreateTable(dump []byte) ([]byte, error) {
-	cmd := exec.Command("sed", "s/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g")
-	cmd.Stdin = bytes.NewReader(dump)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return nil, err
-	}
-	return out.Bytes(), nil
 }
 
 func formatSize(size int) string {
