@@ -9,29 +9,33 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
-	"os"
 	"os/exec"
 	"time"
 
+	mysqlConfig "github.com/go-sql-driver/mysql"
 	"github.com/jfcote87/sshdb/mysql"
 	"golang.org/x/crypto/ssh"
 )
 
 func CheckLocalDatabaseConnection(cfg config.Config) {
-	user := url.QueryEscape(cfg.LocalDB.User)
-	address := url.QueryEscape(cfg.LocalDB.Address)
-	port := url.QueryEscape(cfg.LocalDB.Port)
-	dbName := url.QueryEscape(cfg.LocalDB.Name)
-
 	// Создание строки подключения
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, cfg.LocalDB.Password, address, port, dbName)
 
-	if cfg.Debug {
-		log.Printf("ℹ️ Строка подключения: %s\n", dsn)
+	config := mysqlConfig.Config{
+		User:                 cfg.LocalDB.User,
+		Passwd:               cfg.LocalDB.Password,
+		Net:                  "tcp",
+		Addr:                 cfg.LocalDB.Address,
+		DBName:               cfg.LocalDB.Name,
+		AllowNativePasswords: true,
+		ParseTime:            true,
+		Loc:                  time.Local,
 	}
 
-	dbLocalConnection, err := sql.Open("mysql", dsn)
+	if cfg.Debug {
+		log.Printf("ℹ️ Строка подключения: %s\n", config.FormatDSN())
+	}
+
+	dbLocalConnection, err := sql.Open("mysql", config.FormatDSN())
 	if err != nil {
 		log.Fatalf("⛔ Не удалось подключиться к локальной базе данных: %v", err)
 	}
@@ -58,7 +62,12 @@ func CheckRemoteDatabaseConnection(cfg config.Config) {
 		log.Println("✅ SSH туннель создан")
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", cfg.RemoteDB.User, cfg.RemoteDB.Password, cfg.RemoteDB.Address, cfg.RemoteDB.Port, cfg.RemoteDB.Name)
+	dsn := ""
+	if cfg.RemoteDB.Password == "" {
+		dsn = fmt.Sprintf("%s@tcp(%s:%s)/%s?parseTime=true", cfg.RemoteDB.User, cfg.RemoteDB.Address, cfg.RemoteDB.Port, cfg.RemoteDB.Name)
+	} else {
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", cfg.RemoteDB.User, cfg.RemoteDB.Password, cfg.RemoteDB.Address, cfg.RemoteDB.Port, cfg.RemoteDB.Name)
+	}
 	connector, err := tunnel.OpenConnector(mysql.TunnelDriver, dsn)
 	if err != nil {
 		log.Fatalf("⛔ Не удалось открыть коннектор %s - %v", dsn, err)
@@ -120,20 +129,23 @@ func DumpAndLoadTable(cfg config.Config, table string, session *ssh.Session) err
 }
 
 func dumpTable(cfg config.Config, table string) ([]byte, error) {
-	dumpCmd := exec.Command(
-		"mysqldump",
-		"--skip-lock-tables",
+	var arg []string
+
+	if cfg.LocalDB.Password != "" {
+		arg = append(arg, "-p"+cfg.LocalDB.Password)
+	}
+
+	arg = append(arg, "--skip-lock-tables",
+		"-u", cfg.LocalDB.User,
+		"-h", cfg.LocalDB.Address,
 		"--set-gtid-purged=OFF",
 		"--no-tablespaces",
 		"--add-drop-table",
 		"--compact",
-		"-u", cfg.LocalDB.User,
-		"-p"+cfg.LocalDB.Password,
-		"-h", cfg.LocalDB.Address,
 		cfg.LocalDB.Name,
-		table,
-	)
-	dumpCmd.Env = append(os.Environ(), "MYSQL_PWD="+cfg.LocalDB.Password)
+		table)
+	dumpCmd := exec.Command("mysqldump", arg...)
+
 	return dumpCmd.Output()
 }
 

@@ -69,9 +69,6 @@ func checkConfigParameters(cfg Config) {
 	if cfg.LocalDB.User == "" {
 		missingParams = append(missingParams, "LocalDB.User")
 	}
-	if cfg.LocalDB.Password == "" {
-		missingParams = append(missingParams, "LocalDB.Password")
-	}
 	if cfg.LocalDB.Address == "" {
 		missingParams = append(missingParams, "LocalDB.Address")
 	}
@@ -80,9 +77,6 @@ func checkConfigParameters(cfg Config) {
 	}
 	if cfg.RemoteDB.User == "" {
 		missingParams = append(missingParams, "RemoteDB.User")
-	}
-	if cfg.RemoteDB.Password == "" {
-		missingParams = append(missingParams, "RemoteDB.Password")
 	}
 	if cfg.RemoteDB.Address == "" {
 		missingParams = append(missingParams, "RemoteDB.Address")
