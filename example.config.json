@@ -9,12 +9,14 @@
   "local_db": {
     "name": "local_database_name",
     "user": "local_database_user",
-    "password": "local_database_password",
-    "address": "local_database_address:local_database_port"
+    "net": "local_database_net_type",
+    "address": "local_database_address",
+    "port": "local_database_port"
   },
   "remote_db": {
     "name": "remote_database_name",
     "user": "remote_database_user",
+    "net": "local_database_net_type",
     "address": "remote_database_address",
     "port": "remote_database_port"
   }
