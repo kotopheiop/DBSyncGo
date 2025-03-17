@@ -21,7 +21,7 @@ func CheckLocalDatabaseConnection(cfg config.Config) {
 	jsonConfig := mysqlConfig.Config{
 		User:                 cfg.LocalDB.User,
 		Passwd:               cfg.LocalDB.Password,
-		Net:                  "tcp",
+		Net:                  cfg.LocalDB.Net,
 		Addr:                 cfg.LocalDB.Address,
 		DBName:               cfg.LocalDB.Name,
 		AllowNativePasswords: true,

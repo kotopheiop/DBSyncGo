@@ -22,6 +22,7 @@ type Database struct {
 	Name     string `json:"name"`     // имя базы данных
 	User     string `json:"user"`     // имя пользователя
 	Password string `json:"password"` // пароль
+	Net      string `json:"net"`      // тип подключения tcp|unix
 	Address  string `json:"address"`  // адрес сервера базы данных
 	Port     string `json:"port"`     // порт сервера базы данных
 }
