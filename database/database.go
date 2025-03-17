@@ -2,36 +2,38 @@ package database
 
 import (
 	"DBSyncGo/config"
-	sshConnection "DBSyncGo/ssh"
 	"bytes"
 	"compress/gzip"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"os/exec"
 	"time"
 
-	"github.com/jfcote87/sshdb/mysql"
+	mysqlConfig "github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/ssh"
 )
 
 func CheckLocalDatabaseConnection(cfg config.Config) {
-	user := url.QueryEscape(cfg.LocalDB.User)
-	address := url.QueryEscape(cfg.LocalDB.Address)
-	port := url.QueryEscape(cfg.LocalDB.Port)
-	dbName := url.QueryEscape(cfg.LocalDB.Name)
-
 	// Создание строки подключения
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", user, cfg.LocalDB.Password, address, port, dbName)
 
-	if cfg.Debug {
-		log.Printf("ℹ️ Строка подключения: %s\n", dsn)
+	jsonConfig := mysqlConfig.Config{
+		User:                 cfg.LocalDB.User,
+		Passwd:               cfg.LocalDB.Password,
+		Net:                  cfg.LocalDB.Net,
+		Addr:                 cfg.LocalDB.Address,
+		DBName:               cfg.LocalDB.Name,
+		AllowNativePasswords: true,
+		ParseTime:            true,
+		Loc:                  time.Local,
 	}
 
-	dbLocalConnection, err := sql.Open("mysql", dsn)
+	if cfg.Debug {
+		log.Printf("ℹ️ Строка подключения: %s\n", jsonConfig.FormatDSN())
+	}
+
+	dbLocalConnection, err := sql.Open("mysql", jsonConfig.FormatDSN())
 	if err != nil {
 		log.Fatalf("⛔ Не удалось подключиться к локальной базе данных: %v", err)
 	}
@@ -47,46 +49,6 @@ func CheckLocalDatabaseConnection(cfg config.Config) {
 		log.Fatalf("⛔ Не удалось подключиться к локальной базе данных: %v", err)
 	} else {
 		log.Println("✅ Соединение с локальной базой данных установлено")
-	}
-}
-
-func CheckRemoteDatabaseConnection(cfg config.Config) {
-	tunnel, err := sshConnection.CreateSSHTunnel(cfg)
-	if err != nil {
-		log.Fatalf("⛔ Не удалось создать SSH туннель: %v", err)
-	} else {
-		log.Println("✅ SSH туннель создан")
-	}
-
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", cfg.RemoteDB.User, cfg.RemoteDB.Password, cfg.RemoteDB.Address, cfg.RemoteDB.Port, cfg.RemoteDB.Name)
-	connector, err := tunnel.OpenConnector(mysql.TunnelDriver, dsn)
-	if err != nil {
-		log.Fatalf("⛔ Не удалось открыть коннектор %s - %v", dsn, err)
-	} else {
-		log.Println("✅ Коннектор открыт")
-	}
-
-	dbRemoteConnection := sql.OpenDB(connector)
-	defer func(dbRemoteConnection *sql.DB) {
-		err := dbRemoteConnection.Close()
-		if err != nil {
-
-		}
-	}(dbRemoteConnection)
-
-	err = dbRemoteConnection.Ping()
-	if err != nil {
-		if errors.Is(err, sql.ErrConnDone) {
-			log.Fatalf("⛔ Соединение с базой данных было закрыто: %v", err)
-		} else if errors.Is(err, sql.ErrNoRows) {
-			log.Fatalf("⛔ Не найдено строк в базе данных: %v", err)
-		} else if errors.Is(err, sql.ErrTxDone) {
-			log.Fatalf("⛔ Транзакция уже завершена: %v", err)
-		} else {
-			log.Fatalf("⛔ Неизвестная ошибка при подключении к базе данных: %v", err)
-		}
-	} else {
-		log.Println("✅ Соединение с удалённой базой данных установлено")
 	}
 }
 
@@ -120,13 +82,13 @@ func DumpAndLoadTable(cfg config.Config, table string, session *ssh.Session) err
 }
 
 func dumpTable(cfg config.Config, table string) ([]byte, error) {
+
 	dumpCmd := exec.Command(
 		"mysqldump",
 		"--skip-lock-tables",
 		"--set-gtid-purged=OFF",
 		"--no-tablespaces",
 		"--add-drop-table",
-		"--compact",
 		"-u", cfg.LocalDB.User,
 		"-p"+cfg.LocalDB.Password,
 		"-h", cfg.LocalDB.Address,

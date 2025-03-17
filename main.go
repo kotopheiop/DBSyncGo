@@ -15,7 +15,6 @@ func main() {
 	cfg := config.LoadConfig("config.json")
 
 	database.CheckLocalDatabaseConnection(cfg)
-	database.CheckRemoteDatabaseConnection(cfg)
 
 	// Создаем SSH клиент и туннель один раз
 	client, err := sshConnection.CreateSSHClient(cfg)

@@ -1,7 +1,7 @@
 {
   "tables": ["table1", "table2", "table3"],
   "ssh_user": "your_ssh_username",
-  "remote_server": "remote_server_address",
+  "remote_server": "remote_server_address:remote_server_port",
   "ssh_key_path": "path_to_your_ssh_key",
   "max_routines": 5,
   "compress_dump": true,
@@ -10,6 +10,7 @@
     "name": "local_database_name",
     "user": "local_database_user",
     "password": "local_database_password",
+    "net": "local_database_net_type",
     "address": "local_database_address",
     "port": "local_database_port"
   },
@@ -17,6 +18,7 @@
     "name": "remote_database_name",
     "user": "remote_database_user",
     "password": "remote_database_password",
+    "net": "local_database_net_type",
     "address": "remote_database_address",
     "port": "remote_database_port"
   }
